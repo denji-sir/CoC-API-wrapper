@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar
-
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 V = TypeVar("V")
 
@@ -62,4 +62,3 @@ class TTLCache(Generic[V]):
         if ttl_value <= 0:
             return
         self._items[key] = _CacheItem(expires_at=self._time_fn() + ttl_value, value=value)
-

@@ -50,4 +50,3 @@ def redact_token(headers: Mapping[str, str]) -> dict[str, str]:
             else:
                 redacted[key] = "***"
     return redacted
-

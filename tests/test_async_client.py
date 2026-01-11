@@ -5,7 +5,7 @@ from coc_api_wrapper import AsyncCoCClient
 
 async def test_async_get_player_works() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1/players/%23P"
+        assert request.url.raw_path.decode() == "/v1/players/%23P"
         return httpx.Response(200, json={"tag": "%23P", "name": "Player"})
 
     transport = httpx.MockTransport(handler)
@@ -13,4 +13,3 @@ async def test_async_get_player_works() -> None:
     async with AsyncCoCClient(token="token", client=http_client, max_retries=0) as client:
         player = await client.get_player("#p")
         assert player.name == "Player"
-

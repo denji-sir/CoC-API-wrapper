@@ -13,4 +13,3 @@ def test_ttl_cache_expires() -> None:
 
     now[0] = 2.0
     assert cache.get("k") is None
-

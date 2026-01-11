@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -14,7 +15,7 @@ BotErrorKind = Literal["unauthorized", "not_found", "rate_limited", "server_erro
 @dataclass(frozen=True, slots=True)
 class BotError:
     kind: BotErrorKind
-    message: str
+    message: str | None = None
     retry_after: float | None = None
 
 
@@ -33,27 +34,59 @@ class BotResult(Generic[T]):
 
 def bot_error_from_exception(exc: Exception) -> BotError:
     if isinstance(exc, Unauthorized):
-        return BotError(kind="unauthorized", message="Нужен валидный API токен (Unauthorized).")
+        return BotError(kind="unauthorized")
     if isinstance(exc, NotFound):
-        return BotError(kind="not_found", message="Ничего не найдено по этому тегу.")
+        return BotError(kind="not_found")
     if isinstance(exc, RateLimited):
         return BotError(
             kind="rate_limited",
-            message="Слишком много запросов (rate limit).",
             retry_after=exc.retry_after,
         )
     if isinstance(exc, ServerError):
-        return BotError(kind="server_error", message="Проблема на стороне CoC API. Попробуй позже.")
+        return BotError(kind="server_error")
     if isinstance(exc, APIError):
-        return BotError(kind="api_error", message="Ошибка CoC API.")
-    return BotError(kind="api_error", message="Неизвестная ошибка.")
+        return BotError(kind="api_error")
+    return BotError(kind="api_error")
 
 
-def format_bot_error(error: BotError) -> str:
+_MESSAGES: dict[str, dict[BotErrorKind, str]] = {
+    "ru": {
+        "unauthorized": "Нужен валидный API токен (Unauthorized).",
+        "not_found": "Ничего не найдено по этому тегу.",
+        "rate_limited": "Слишком много запросов (rate limit).",
+        "server_error": "Проблема на стороне CoC API. Попробуй позже.",
+        "api_error": "Ошибка CoC API.",
+    },
+    "en": {
+        "unauthorized": "A valid API token is required (Unauthorized).",
+        "not_found": "Nothing found for this tag.",
+        "rate_limited": "Too many requests (rate limit).",
+        "server_error": "CoC API is having issues. Try again later.",
+        "api_error": "CoC API error.",
+    },
+}
+
+
+def _resolve_locale(locale: str | None) -> str:
+    raw = locale if locale is not None else os.environ.get("BOT_LOCALE", "")
+    normalized = raw.strip().lower()
+    if not normalized:
+        return "ru"
+    base = normalized.split("-", maxsplit=1)[0].split("_", maxsplit=1)[0]
+    return base if base in _MESSAGES else "ru"
+
+
+def format_bot_error(error: BotError, *, locale: str | None = None) -> str:
+    if error.message:
+        return error.message
+    resolved = _resolve_locale(locale)
+    message = _MESSAGES[resolved].get(error.kind, _MESSAGES["ru"]["api_error"])
     if error.kind == "rate_limited" and error.retry_after is not None:
         seconds = int(error.retry_after)
-        return f"{error.message} Попробуй через ~{seconds}s."
-    return error.message
+        if resolved == "en":
+            return f"{message} Try again in ~{seconds}s."
+        return f"{message} Попробуй через ~{seconds}s."
+    return message
 
 
 def safe_call(fn: Callable[[], T]) -> BotResult[T]:

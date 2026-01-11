@@ -16,4 +16,3 @@ def test_normalize_tag_empty_raises() -> None:
 
 def test_paginate_params() -> None:
     assert paginate(limit=10, after="cursor") == {"limit": 10, "after": "cursor"}
-

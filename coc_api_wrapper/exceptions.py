@@ -12,7 +12,7 @@ class APIError(Exception):
     url: str | None = None
     payload: Any | None = None
 
-    def __str__(self) -> str:  # noqa: D105
+    def __str__(self) -> str:
         bits: list[str] = [self.message]
         if self.status_code is not None:
             bits.append(f"status={self.status_code}")
@@ -36,4 +36,3 @@ class RateLimited(APIError):
 
 class ServerError(APIError):
     pass
-

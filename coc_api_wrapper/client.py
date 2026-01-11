@@ -11,11 +11,24 @@ import httpx
 from .cache import TTLCache
 from .exceptions import APIError, NotFound, RateLimited, ServerError, Unauthorized
 from .models import (
+    CapitalRankingPage,
     Clan,
+    ClanLabelsPage,
     ClanMembersPage,
+    ClanRankingPage,
     CurrentWar,
+    CWLLeagueGroup,
+    CWLLeaguePage,
+    CWLWar,
+    GoldPassSeason,
+    LeagueSeasonRankingsPage,
+    LeagueSeasonsPage,
+    LeaguesPage,
+    LocationsPage,
     Player,
+    PlayerRankingPage,
     RaidSeasonsPage,
+    WarLogPage,
     ensure_object,
 )
 from .utils import cache_key, normalize_tag, paginate, redact_token
@@ -117,7 +130,148 @@ class CoCClient:
         return RaidSeasonsPage.model_validate(payload)
 
     def get_cwl_group(self, clan_tag: str) -> dict[str, Any]:
-        return self._request("GET", f"/clans/{normalize_tag(clan_tag)}/currentwar/leaguegroup")
+        payload = self._request(
+            "GET",
+            f"/clans/{normalize_tag(clan_tag)}/currentwar/leaguegroup",
+        )
+        return CWLLeagueGroup.model_validate(payload)
+
+    def get_clan_warlog(
+        self,
+        tag: str,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> WarLogPage:
+        payload = self._request(
+            "GET",
+            f"/clans/{normalize_tag(tag)}/warlog",
+            params=paginate(limit=limit, after=after),
+        )
+        return WarLogPage.model_validate(payload)
+
+    def get_cwl_leagues(
+        self,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> CWLLeaguePage:
+        payload = self._request(
+            "GET",
+            "/clanwarleagues/warleagues",
+            params=paginate(limit=limit, after=after),
+        )
+        return CWLLeaguePage.model_validate(payload)
+
+    def get_cwl_war(self, war_tag: str) -> CWLWar:
+        payload = self._request("GET", f"/clanwarleagues/wars/{normalize_tag(war_tag)}")
+        return CWLWar.model_validate(payload)
+
+    def get_locations(
+        self,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> LocationsPage:
+        payload = self._request("GET", "/locations", params=paginate(limit=limit, after=after))
+        return LocationsPage.model_validate(payload)
+
+    def get_location_clan_rankings(
+        self,
+        location_id: int | str,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> ClanRankingPage:
+        payload = self._request(
+            "GET",
+            f"/locations/{location_id}/rankings/clans",
+            params=paginate(limit=limit, after=after),
+        )
+        return ClanRankingPage.model_validate(payload)
+
+    def get_location_player_rankings(
+        self,
+        location_id: int | str,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> PlayerRankingPage:
+        payload = self._request(
+            "GET",
+            f"/locations/{location_id}/rankings/players",
+            params=paginate(limit=limit, after=after),
+        )
+        return PlayerRankingPage.model_validate(payload)
+
+    def get_location_capital_rankings(
+        self,
+        location_id: int | str,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> CapitalRankingPage:
+        payload = self._request(
+            "GET",
+            f"/locations/{location_id}/rankings/capital",
+            params=paginate(limit=limit, after=after),
+        )
+        return CapitalRankingPage.model_validate(payload)
+
+    def get_leagues(
+        self,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> LeaguesPage:
+        payload = self._request("GET", "/leagues", params=paginate(limit=limit, after=after))
+        return LeaguesPage.model_validate(payload)
+
+    def get_league_seasons(
+        self,
+        league_id: int | str,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> LeagueSeasonsPage:
+        payload = self._request(
+            "GET",
+            f"/leagues/{league_id}/seasons",
+            params=paginate(limit=limit, after=after),
+        )
+        return LeagueSeasonsPage.model_validate(payload)
+
+    def get_league_season(
+        self,
+        league_id: int | str,
+        season_id: str,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> LeagueSeasonRankingsPage:
+        payload = self._request(
+            "GET",
+            f"/leagues/{league_id}/seasons/{season_id}",
+            params=paginate(limit=limit, after=after),
+        )
+        return LeagueSeasonRankingsPage.model_validate(payload)
+
+    def get_clan_labels(
+        self,
+        *,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> ClanLabelsPage:
+        payload = self._request(
+            "GET",
+            "/labels/clans",
+            params=paginate(limit=limit, after=after),
+        )
+        return ClanLabelsPage.model_validate(payload)
+
+    def get_current_goldpass(self) -> GoldPassSeason:
+        payload = self._request("GET", "/goldpass/seasons/current")
+        return GoldPassSeason.model_validate(payload)
 
     def _request(
         self,
