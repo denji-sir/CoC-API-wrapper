@@ -1,0 +1,14 @@
+.python-version
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+dist/
+build/
+.DS_Store
+CONTINUITY.md
+AGENTS.md

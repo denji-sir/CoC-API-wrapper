@@ -1,0 +1,55 @@
+import httpx
+
+from coc_api_wrapper import (
+    AsyncCoCClient,
+    format_bot_error,
+    safe_await,
+    safe_await_with_retry,
+)
+
+
+async def test_safe_await_turns_exception_into_bot_error_message() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, headers={"Retry-After": "5"}, json={"reason": "limit"})
+
+    transport = httpx.MockTransport(handler)
+    http_client = httpx.AsyncClient(transport=transport, base_url="https://api.clashofclans.com/v1")
+    async with AsyncCoCClient(
+        token="token",
+        client=http_client,
+        max_retries=0,
+    ) as client:
+        result = await safe_await(client.get_player("#P"))
+        assert not result.ok
+        assert result.error is not None
+        assert "5s" in format_bot_error(result.error)
+
+
+async def test_safe_await_with_retry_waits_for_retry_after() -> None:
+    calls = {"n": 0, "slept": []}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "2"}, json={"reason": "limit"})
+        return httpx.Response(200, json={"tag": "%23P", "name": "Player"})
+
+    async def sleep_fn(seconds: float) -> None:
+        calls["slept"].append(seconds)
+
+    transport = httpx.MockTransport(handler)
+    http_client = httpx.AsyncClient(transport=transport, base_url="https://api.clashofclans.com/v1")
+    async with AsyncCoCClient(
+        token="token",
+        client=http_client,
+        max_retries=0,
+    ) as client:
+        result = await safe_await_with_retry(
+            lambda: client.get_player("#P"),
+            max_retries=1,
+            sleep_fn=sleep_fn,
+        )
+        assert result.ok
+        assert result.value is not None
+        assert result.value.name == "Player"
+        assert calls["slept"] == [2.0]
